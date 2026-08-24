@@ -33,6 +33,13 @@ public struct UsageRow: Hashable, Sendable, Identifiable {
         self.unit = unit
         self.resetAt = resetAt
     }
+
+    public var isValid: Bool {
+        switch kind {
+        case .window: return !label.isEmpty && used != nil && cap != nil
+        case .balance: return !label.isEmpty && balance != nil
+        }
+    }
 }
 
 public enum ProviderStatus: String, Hashable, Sendable {
