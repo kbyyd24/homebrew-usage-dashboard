@@ -24,18 +24,12 @@ public enum KimiResponseParser {
     }
 
     private static func parseWindow(_ dict: [String: Any]) -> (used: Double, cap: Double, resetAt: Date?)? {
-        guard let limit = number(dict["limit"]), let remaining = number(dict["remaining"]) else {
+        guard let limit = JSONNumber.double(dict["limit"]),
+              let remaining = JSONNumber.double(dict["remaining"]) else {
             return nil
         }
         let resetAt = (dict["resetTime"] as? String).flatMap(DateParsing.parseISO8601)
         return (max(limit - remaining, 0), limit, resetAt)
-    }
-
-    private static func number(_ value: Any?) -> Double? {
-        if let n = value as? Double { return n }
-        if let n = value as? NSNumber { return n.doubleValue }
-        if let s = value as? String { return Double(s) }
-        return nil
     }
 }
 
