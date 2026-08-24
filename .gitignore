@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+dist/
+UsageDash.app/
+*.xcodeproj
+.DS_Store
+.specs/
+.pi/worktrees
