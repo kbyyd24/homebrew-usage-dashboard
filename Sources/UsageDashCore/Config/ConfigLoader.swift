@@ -8,6 +8,25 @@ public enum ConfigError: Error, Equatable, Sendable {
     case invalidType(String)
     case customRequiresRequest
     case customRequiresExtractor
+
+    public var message: String {
+        switch self {
+        case .fileNotFound(let path): return "config file not found: \(path)"
+        case .invalidJSON(let detail): return "invalid config JSON: \(detail)"
+        case .missingField(let field): return "missing config field: \(field)"
+        case .missingEnvironment(let name): return "missing environment variable: \(name)"
+        case .invalidType(let field): return "invalid provider type: \(field)"
+        case .customRequiresRequest: return "custom provider requires a 'request' object"
+        case .customRequiresExtractor: return "custom provider requires an 'extractor' script"
+        }
+    }
+
+    public static func describe(_ error: Error) -> String {
+        if let configError = error as? ConfigError {
+            return configError.message
+        }
+        return error.localizedDescription
+    }
 }
 
 public enum ConfigPath {
