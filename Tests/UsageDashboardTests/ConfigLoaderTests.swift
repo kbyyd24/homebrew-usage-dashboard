@@ -1,6 +1,11 @@
 import Foundation
 import Testing
+import Yams
 @testable import UsageDashCore
+
+private func yamlData(_ object: Any) throws -> Data {
+    try Data(Yams.dump(object: object).utf8)
+}
 
 private func jsonData(_ object: Any) throws -> Data {
     try JSONSerialization.data(withJSONObject: object)
@@ -10,7 +15,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderResolvesApiKeyEnvReference() throws {
     // Given a config referencing an environment variable that is present
-    let data = try jsonData([
+    let data = try yamlData([
         "providers": [provider(["id": "kimi", "type": "kimi", "apiKeyEnv": "KIMI_API_KEY"])],
     ])
     let loader = ConfigLoader(environment: ["KIMI_API_KEY": "sk-kimi"])
@@ -25,7 +30,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderKeepsLiteralApiKey() throws {
     // Given a config with a literal key
-    let data = try jsonData([
+    let data = try yamlData([
         "providers": [provider(["id": "kimi", "type": "kimi", "apiKey": "sk-literal"])],
     ])
 
@@ -38,7 +43,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderAppliesDefaults() throws {
     // Given a minimal config omitting name, interval, and custom method
-    let data = try jsonData([
+    let data = try yamlData([
         "providers": [
             provider(["id": "kimi", "type": "kimi", "apiKey": "x"]),
             provider([
@@ -60,7 +65,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderSkipsProviderMissingIdAndWarns() throws {
     // Given a provider without an id alongside none other
-    let data = try jsonData(["providers": [provider(["type": "kimi", "apiKey": "x"])]])
+    let data = try yamlData(["providers": [provider(["type": "kimi", "apiKey": "x"])]])
 
     // When loading (fail-soft)
     let config = try ConfigLoader(environment: [:]).load(data: data)
@@ -74,7 +79,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderSkipsProviderMissingTypeAndWarns() throws {
     // Given a provider without a type
-    let data = try jsonData(["providers": [provider(["id": "kimi", "apiKey": "x"])]])
+    let data = try yamlData(["providers": [provider(["id": "kimi", "apiKey": "x"])]])
 
     // When loading (fail-soft)
     let config = try ConfigLoader(environment: [:]).load(data: data)
@@ -86,7 +91,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderSkipsProviderMissingKeyAndWarns() throws {
     // Given a provider with neither apiKey nor apiKeyEnv
-    let data = try jsonData(["providers": [provider(["id": "kimi", "type": "kimi"])]])
+    let data = try yamlData(["providers": [provider(["id": "kimi", "type": "kimi"])]])
 
     // When loading (fail-soft)
     let config = try ConfigLoader(environment: [:]).load(data: data)
@@ -98,7 +103,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderSkipsProviderMissingEnvironmentAndWarns() throws {
     // Given a config referencing an environment variable that is absent
-    let data = try jsonData([
+    let data = try yamlData([
         "providers": [provider(["id": "kimi", "type": "kimi", "apiKeyEnv": "KIMI_API_KEY"])],
     ])
 
@@ -113,7 +118,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderSkipsCustomMissingRequestAndWarns() throws {
     // Given a custom provider without a request block
-    let data = try jsonData([
+    let data = try yamlData([
         "providers": [provider(["id": "cc", "type": "custom", "apiKey": "x", "extractor": "f"])],
     ])
 
@@ -127,7 +132,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderSkipsCustomMissingExtractorAndWarns() throws {
     // Given a custom provider without an extractor
-    let data = try jsonData([
+    let data = try yamlData([
         "providers": [provider([
             "id": "cc", "type": "custom", "apiKey": "x",
             "request": ["url": "https://example.com/api"],
@@ -144,7 +149,7 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
 
 @Test func configLoaderKeepsValidProvidersWhenOneIsBad() throws {
     // Given one valid provider and one bad provider (missing key)
-    let data = try jsonData([
+    let data = try yamlData([
         "providers": [
             provider(["id": "kimi", "type": "kimi", "apiKey": "sk-kimi"]),
             provider(["id": "cc", "type": "custom", "apiKeyEnv": "CC_KEY"]),
@@ -160,13 +165,27 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
     #expect(config.warnings[0].contains("cc"))
 }
 
-@Test func configLoaderReportsBadJSON() {
-    // Given malformed JSON
-    let data = Data("{ not json".utf8)
+@Test func configLoaderReportsBadYAML() {
+    // Given malformed YAML
+    let data = Data("providers: [\n  - id: [unclosed\n".utf8)
 
-    // When & Then loading reports invalid JSON (config-level, still hard)
+    // When & Then loading reports invalid YAML (config-level, still hard)
     let error = #expect(throws: ConfigError.self) {
         try ConfigLoader(environment: [:]).load(data: data)
+    }
+    guard case .invalidYAML = error else {
+        Issue.record("expected invalidYAML, got \(String(describing: error))")
+        return
+    }
+}
+
+@Test func configLoaderReportsBadJSON() {
+    // Given malformed JSON, read through the legacy path
+    let data = Data("{ not json".utf8)
+
+    // When & Then loading reports invalid JSON
+    let error = #expect(throws: ConfigError.self) {
+        try ConfigLoader(environment: [:]).loadJSON(data: data)
     }
     guard case .invalidJSON = error else {
         Issue.record("expected invalidJSON, got \(String(describing: error))")
@@ -174,9 +193,23 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
     }
 }
 
+@Test func configLoaderLoadsLegacyJSON() throws {
+    // Given a JSON config (legacy format)
+    let data = try jsonData([
+        "providers": [provider(["id": "kimi", "type": "kimi", "apiKey": "sk-kimi"])],
+    ])
+
+    // When loading through the legacy path
+    let config = try ConfigLoader(environment: [:]).loadJSON(data: data)
+
+    // Then it resolves identically to the YAML path
+    #expect(config.providers.map(\.id) == ["kimi"])
+    #expect(config.providers.first?.apiKey == "sk-kimi")
+}
+
 @Test func configLoaderHonorsPerProviderIntervalOverride() throws {
     // Given one provider with an explicit interval and one without
-    let data = try jsonData([
+    let data = try yamlData([
         "defaultIntervalSec": 600,
         "providers": [
             provider(["id": "a", "type": "kimi", "apiKey": "x", "refreshIntervalSec": 120]),

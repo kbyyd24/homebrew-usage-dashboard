@@ -1,8 +1,10 @@
 import Foundation
+import Yams
 
 public enum ConfigError: Error, Equatable, Sendable {
     case fileNotFound(String)
     case invalidJSON(String)
+    case invalidYAML(String)
     case missingField(String)
     case missingEnvironment(String)
     case invalidType(String)
@@ -13,6 +15,7 @@ public enum ConfigError: Error, Equatable, Sendable {
         switch self {
         case .fileNotFound(let path): return "config file not found: \(path)"
         case .invalidJSON(let detail): return "invalid config JSON: \(detail)"
+        case .invalidYAML(let detail): return "invalid config YAML: \(detail)"
         case .missingField(let field): return "missing config field: \(field)"
         case .missingEnvironment(let name): return "missing environment variable: \(name)"
         case .invalidType(let field): return "invalid provider type: \(field)"
@@ -60,13 +63,27 @@ public struct ConfigLoader: Sendable {
     public func load(data: Data) throws -> AppConfig {
         let raw: AppConfigJSON
         do {
+            raw = try YAMLDecoder().decode(AppConfigJSON.self, from: data)
+        } catch {
+            throw ConfigError.invalidYAML(String(describing: error))
+        }
+        return build(raw: raw)
+    }
+
+    /// Legacy JSON path, kept for migrating pre-YAML config files.
+    public func loadJSON(data: Data) throws -> AppConfig {
+        let raw: AppConfigJSON
+        do {
             raw = try JSONDecoder().decode(AppConfigJSON.self, from: data)
         } catch {
             throw ConfigError.invalidJSON(error.localizedDescription)
         }
+        return build(raw: raw)
+    }
 
-        // Fail-soft: a single misconfigured provider must not abort the whole
-        // config. Skip it and record a warning so the rest still load.
+    // Fail-soft: a single misconfigured provider must not abort the whole
+    // config. Skip it and record a warning so the rest still load.
+    private func build(raw: AppConfigJSON) -> AppConfig {
         var providers: [ProviderConfig] = []
         var warnings: [String] = []
         for (index, item) in (raw.providers ?? []).enumerated() {
