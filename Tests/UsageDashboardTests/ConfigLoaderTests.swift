@@ -58,80 +58,74 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
     #expect(config.providers[1].custom?.method == "GET")
 }
 
-@Test func configLoaderReportsMissingId() throws {
-    // Given a provider without an id
+@Test func configLoaderSkipsProviderMissingIdAndWarns() throws {
+    // Given a provider without an id alongside none other
     let data = try jsonData(["providers": [provider(["type": "kimi", "apiKey": "x"])]])
 
-    // When & Then loading reports the missing field
-    let error = #expect(throws: ConfigError.self) {
-        try ConfigLoader(environment: [:]).load(data: data)
-    }
-    #expect(error == .missingField("providers[0].id"))
+    // When loading (fail-soft)
+    let config = try ConfigLoader(environment: [:]).load(data: data)
+
+    // Then the provider is skipped with a warning, not a hard failure
+    #expect(config.providers.isEmpty)
+    #expect(config.warnings.count == 1)
+    #expect(config.warnings[0].contains("providers[0]"))
+    #expect(config.warnings[0].contains("missing config field"))
 }
 
-@Test func configLoaderReportsMissingType() throws {
+@Test func configLoaderSkipsProviderMissingTypeAndWarns() throws {
     // Given a provider without a type
     let data = try jsonData(["providers": [provider(["id": "kimi", "apiKey": "x"])]])
 
-    // When & Then loading reports the missing field
-    let error = #expect(throws: ConfigError.self) {
-        try ConfigLoader(environment: [:]).load(data: data)
-    }
-    #expect(error == .missingField("providers[0].type"))
+    // When loading (fail-soft)
+    let config = try ConfigLoader(environment: [:]).load(data: data)
+
+    // Then skip + warn
+    #expect(config.providers.isEmpty)
+    #expect(config.warnings[0].contains("missing config field"))
 }
 
-@Test func configLoaderReportsMissingKey() throws {
+@Test func configLoaderSkipsProviderMissingKeyAndWarns() throws {
     // Given a provider with neither apiKey nor apiKeyEnv
     let data = try jsonData(["providers": [provider(["id": "kimi", "type": "kimi"])]])
 
-    // When & Then loading reports the missing key
-    let error = #expect(throws: ConfigError.self) {
-        try ConfigLoader(environment: [:]).load(data: data)
-    }
-    #expect(error == .missingField("providers[0].apiKey or providers[0].apiKeyEnv"))
+    // When loading (fail-soft)
+    let config = try ConfigLoader(environment: [:]).load(data: data)
+
+    // Then skip + warn about the missing key
+    #expect(config.providers.isEmpty)
+    #expect(config.warnings[0].contains("apiKey or"))
 }
 
-@Test func configLoaderReportsBadJSON() {
-    // Given malformed JSON
-    let data = Data("{ not json".utf8)
-
-    // When & Then loading reports invalid JSON
-    let error = #expect(throws: ConfigError.self) {
-        try ConfigLoader(environment: [:]).load(data: data)
-    }
-    guard case .invalidJSON = error else {
-        Issue.record("expected invalidJSON, got \(String(describing: error))")
-        return
-    }
-}
-
-@Test func configLoaderReportsMissingEnvironment() throws {
+@Test func configLoaderSkipsProviderMissingEnvironmentAndWarns() throws {
     // Given a config referencing an environment variable that is absent
     let data = try jsonData([
         "providers": [provider(["id": "kimi", "type": "kimi", "apiKeyEnv": "KIMI_API_KEY"])],
     ])
 
-    // When & Then loading reports the missing environment variable
-    let error = #expect(throws: ConfigError.self) {
-        try ConfigLoader(environment: [:]).load(data: data)
-    }
-    #expect(error == .missingEnvironment("KIMI_API_KEY"))
+    // When loading with an empty environment (fail-soft)
+    let config = try ConfigLoader(environment: [:]).load(data: data)
+
+    // Then skip + warn about the missing environment variable
+    #expect(config.providers.isEmpty)
+    #expect(config.warnings[0].contains("missing environment variable"))
+    #expect(config.warnings[0].contains("KIMI_API_KEY"))
 }
 
-@Test func configLoaderReportsCustomMissingRequest() throws {
+@Test func configLoaderSkipsCustomMissingRequestAndWarns() throws {
     // Given a custom provider without a request block
     let data = try jsonData([
         "providers": [provider(["id": "cc", "type": "custom", "apiKey": "x", "extractor": "f"])],
     ])
 
-    // When & Then loading reports the missing request
-    let error = #expect(throws: ConfigError.self) {
-        try ConfigLoader(environment: [:]).load(data: data)
-    }
-    #expect(error == .customRequiresRequest)
+    // When loading (fail-soft)
+    let config = try ConfigLoader(environment: [:]).load(data: data)
+
+    // Then skip + warn
+    #expect(config.providers.isEmpty)
+    #expect(config.warnings[0].contains("request"))
 }
 
-@Test func configLoaderReportsCustomMissingExtractor() throws {
+@Test func configLoaderSkipsCustomMissingExtractorAndWarns() throws {
     // Given a custom provider without an extractor
     let data = try jsonData([
         "providers": [provider([
@@ -140,11 +134,44 @@ private func provider(_ fields: [String: Any]) -> [String: Any] { fields }
         ])],
     ])
 
-    // When & Then loading reports the missing extractor
+    // When loading (fail-soft)
+    let config = try ConfigLoader(environment: [:]).load(data: data)
+
+    // Then skip + warn
+    #expect(config.providers.isEmpty)
+    #expect(config.warnings[0].contains("extractor"))
+}
+
+@Test func configLoaderKeepsValidProvidersWhenOneIsBad() throws {
+    // Given one valid provider and one bad provider (missing key)
+    let data = try jsonData([
+        "providers": [
+            provider(["id": "kimi", "type": "kimi", "apiKey": "sk-kimi"]),
+            provider(["id": "cc", "type": "custom", "apiKeyEnv": "CC_KEY"]),
+        ],
+    ])
+
+    // When loading with CC_KEY absent (fail-soft)
+    let config = try ConfigLoader(environment: [:]).load(data: data)
+
+    // Then the valid provider loads, the bad one is skipped with a warning
+    #expect(config.providers.map(\.id) == ["kimi"])
+    #expect(config.warnings.count == 1)
+    #expect(config.warnings[0].contains("cc"))
+}
+
+@Test func configLoaderReportsBadJSON() {
+    // Given malformed JSON
+    let data = Data("{ not json".utf8)
+
+    // When & Then loading reports invalid JSON (config-level, still hard)
     let error = #expect(throws: ConfigError.self) {
         try ConfigLoader(environment: [:]).load(data: data)
     }
-    #expect(error == .customRequiresExtractor)
+    guard case .invalidJSON = error else {
+        Issue.record("expected invalidJSON, got \(String(describing: error))")
+        return
+    }
 }
 
 @Test func configLoaderHonorsPerProviderIntervalOverride() throws {

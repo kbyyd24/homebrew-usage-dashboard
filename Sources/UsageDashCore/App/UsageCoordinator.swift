@@ -5,6 +5,7 @@ public final class UsageCoordinator {
     public let store = SnapshotStore()
     public private(set) var dashboard: DashboardViewModel?
     public private(set) var configError: String?
+    public private(set) var configWarnings: [String] = []
 
     private let httpClient: HTTPClient
     private let extractorRunner: ExtractorRunner
@@ -32,6 +33,7 @@ public final class UsageCoordinator {
     }
 
     private func assemble(_ config: AppConfig) {
+        configWarnings = config.warnings
         let providers = config.providers.map(buildProvider)
         let scheduler = RefreshScheduler(store: store, providers: providers, defaultInterval: config.defaultIntervalSec)
         self.scheduler = scheduler

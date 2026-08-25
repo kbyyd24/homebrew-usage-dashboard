@@ -65,10 +65,23 @@ public struct ConfigLoader: Sendable {
             throw ConfigError.invalidJSON(error.localizedDescription)
         }
 
-        let providers = try (raw.providers ?? []).enumerated().map { index, item in
-            try Self.buildProvider(item, index: index, environment: environment)
+        // Fail-soft: a single misconfigured provider must not abort the whole
+        // config. Skip it and record a warning so the rest still load.
+        var providers: [ProviderConfig] = []
+        var warnings: [String] = []
+        for (index, item) in (raw.providers ?? []).enumerated() {
+            do {
+                providers.append(try Self.buildProvider(item, index: index, environment: environment))
+            } catch {
+                let id = item.id?.trimmedNonEmpty ?? "?"
+                warnings.append("providers[\(index)] (\(id)): \(ConfigError.describe(error))")
+            }
         }
-        return AppConfig(defaultIntervalSec: raw.defaultIntervalSec ?? 600, providers: providers)
+        return AppConfig(
+            defaultIntervalSec: raw.defaultIntervalSec ?? 600,
+            providers: providers,
+            warnings: warnings
+        )
     }
 
     private static func buildProvider(

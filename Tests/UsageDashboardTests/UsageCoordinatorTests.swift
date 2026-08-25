@@ -74,18 +74,43 @@ private let kimiBody = """
 
 @MainActor
 @Test func coordinatorSurfacesConfigErrorWithoutCrashing() async throws {
-    // Given a config that references a missing environment variable
+    // Given a config URL that does not exist (a file-level error)
+    let configURL = FileManager.default.temporaryDirectory
+        .appendingPathComponent("does-not-exist-\(UUID().uuidString).json")
+    let coordinator = UsageCoordinator(httpClient: StubHTTPClient { _ in
+        throw ProviderError.badResponse("unused")
+    }, extractorRunner: FakeExtractor())
+
+    // When starting
+    await coordinator.start(configURL: configURL, environment: [:])
+
+    // Then a readable error is exposed and no dashboard is assembled
+    #expect(coordinator.configError?.contains("config file not found") == true)
+    #expect(coordinator.dashboard == nil)
+}
+
+@MainActor
+@Test func coordinatorSkipsBadProviderAndLoadsValidOnes() async throws {
+    // Given a config with one valid provider and one bad provider (missing env var)
     let configURL = try writeTempConfig([
-        "providers": [["id": "kimi", "type": "kimi", "apiKeyEnv": "KIMI_API_KEY"]],
+        "providers": [
+            ["id": "kimi", "type": "kimi", "name": "Kimi Code", "apiKeyEnv": "KIMI_API_KEY"],
+            ["id": "cc", "type": "custom", "name": "CommandCode", "apiKeyEnv": "COMMANDCODE_API_KEY",
+             "request": ["url": "https://example.com/cc", "method": "GET"],
+             "extractor": "function(r){ return r; }"],
+        ],
     ])
     let coordinator = UsageCoordinator(httpClient: StubHTTPClient { _ in
         throw ProviderError.badResponse("unused")
     }, extractorRunner: FakeExtractor())
 
-    // When starting with an environment missing that variable
-    await coordinator.start(configURL: configURL, environment: [:])
+    // When starting with only KIMI_API_KEY set (fail-soft)
+    await coordinator.start(configURL: configURL, environment: ["KIMI_API_KEY": "sk-kimi"])
 
-    // Then a readable error is exposed and no dashboard is assembled
-    #expect(coordinator.configError?.contains("missing environment variable") == true)
-    #expect(coordinator.dashboard == nil)
+    // Then the bad provider is skipped with a warning, the valid one still loads
+    #expect(coordinator.configError == nil)
+    #expect(coordinator.configWarnings.count == 1)
+    #expect(coordinator.configWarnings[0].contains("cc"))
+    let dashboard = try #require(coordinator.dashboard)
+    #expect(dashboard.display().map(\.id) == ["kimi"])
 }

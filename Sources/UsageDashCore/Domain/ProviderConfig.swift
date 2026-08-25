@@ -59,9 +59,30 @@ public struct ProviderConfig: Hashable, Sendable, Codable {
 public struct AppConfig: Hashable, Sendable, Codable {
     public let defaultIntervalSec: Int
     public let providers: [ProviderConfig]
+    /// Runtime-derived warnings for providers that could not be configured.
+    public let warnings: [String]
 
-    public init(defaultIntervalSec: Int = 600, providers: [ProviderConfig]) {
+    public init(defaultIntervalSec: Int = 600, providers: [ProviderConfig], warnings: [String] = []) {
         self.defaultIntervalSec = defaultIntervalSec
         self.providers = providers
+        self.warnings = warnings
+    }
+
+    // `warnings` is derived at load time and is not part of the persisted config.
+    private enum CodingKeys: String, CodingKey {
+        case defaultIntervalSec, providers
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        defaultIntervalSec = try container.decodeIfPresent(Int.self, forKey: .defaultIntervalSec) ?? 600
+        providers = try container.decode([ProviderConfig].self, forKey: .providers)
+        warnings = []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(defaultIntervalSec, forKey: .defaultIntervalSec)
+        try container.encode(providers, forKey: .providers)
     }
 }
