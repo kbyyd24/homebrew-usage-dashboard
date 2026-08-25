@@ -1,4 +1,5 @@
 import Foundation
+@testable import UsageDashCore
 
 struct StubHTTPClient: HTTPClient {
     private let handler: @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
