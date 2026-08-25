@@ -5,6 +5,7 @@ public enum ConfigWriter {
     public static func encode(_ config: AppConfig) throws -> String {
         let encoder = YAMLEncoder()
         encoder.options.newLineScalarStyle = .literal
+        encoder.options.allowUnicode = true
         return try encoder.encode(AppConfigDTO(config))
     }
 

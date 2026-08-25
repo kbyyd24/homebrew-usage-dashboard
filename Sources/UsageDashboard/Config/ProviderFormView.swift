@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UsageDashCore
 
@@ -7,56 +8,32 @@ struct ProviderFormView: View {
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                TextField("id", text: $provider.id)
-                    .frame(width: 120)
-                Picker("", selection: $provider.type) {
-                    Text("Kimi").tag(ProviderType.kimi)
-                    Text("MiniMax").tag(ProviderType.minimax)
-                    Text("自定义").tag(ProviderType.custom)
+        VStack(alignment: .leading, spacing: 10) {
+            headerRow
+            labeledField("名称", field: { TextField("名称", text: $provider.name).textFieldStyle(.roundedBorder) })
+
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("密钥（字面量）").font(.caption).foregroundStyle(.secondary)
+                    TextField("sk-…", text: $provider.apiKeyLiteral).textFieldStyle(.roundedBorder)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                Spacer()
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("或环境变量名").font(.caption).foregroundStyle(.secondary)
+                    TextField("KIMI_API_KEY", text: $provider.apiKeyEnvName).textFieldStyle(.roundedBorder)
                 }
-                .buttonStyle(.borderless)
-                .help("删除该订阅")
             }
 
-            TextField("名称", text: $provider.name)
-
-            HStack {
-                TextField("密钥字面量", text: $provider.apiKeyLiteral)
-                Text("或")
-                TextField("环境变量名", text: $provider.apiKeyEnvName)
-            }
-
-            HStack {
-                Text("刷新间隔（秒，留空用默认）").font(.caption).foregroundStyle(.secondary)
-                TextField("", text: refreshIntervalBinding)
-                    .frame(width: 70)
+            HStack(spacing: 6) {
+                Text("刷新间隔（秒）").font(.caption).foregroundStyle(.secondary)
+                TextField("600", text: refreshIntervalBinding)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 80)
                 Spacer()
             }
+            .padding(.bottom, 2)
 
             if provider.isCustom {
-                TextField("请求 URL", text: $provider.url)
-                TextField("方法", text: $provider.method)
-                    .frame(width: 120)
-                fieldLabel("Headers（每行 key: value）")
-                TextEditor(text: $provider.headersText)
-                    .frame(height: 56)
-                    .font(.system(.caption, design: .monospaced))
-                fieldLabel("Body（可选）")
-                TextEditor(text: $provider.body)
-                    .frame(height: 40)
-                    .font(.system(.caption, design: .monospaced))
-                fieldLabel("Extractor（JavaScript）")
-                TextEditor(text: $provider.extractor)
-                    .frame(height: 160)
-                    .font(.system(.caption, design: .monospaced))
+                customFields
             }
 
             HStack {
@@ -68,7 +45,90 @@ struct ProviderFormView: View {
                 }
             }
         }
-        .padding(8)
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(nsColor: .separatorColor)))
+    }
+
+    private var headerRow: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ID").font(.caption).foregroundStyle(.secondary)
+                TextField("id", text: $provider.id)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 110)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("类型").font(.caption).foregroundStyle(.secondary)
+                Picker("", selection: $provider.type) {
+                    Text("Kimi").tag(ProviderType.kimi)
+                    Text("MiniMax").tag(ProviderType.minimax)
+                    Text("自定义").tag(ProviderType.custom)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            Spacer()
+            Button(role: .destructive, action: onDelete) {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.borderless)
+            .help("删除该订阅")
+        }
+    }
+
+    private var customFields: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("请求 URL").font(.caption).foregroundStyle(.secondary)
+                    TextField("https://…", text: $provider.url).textFieldStyle(.roundedBorder)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("方法").font(.caption).foregroundStyle(.secondary)
+                    TextField("GET", text: $provider.method)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 90)
+                }
+            }
+            labeledField("Headers（每行 key: value）", field: {
+                borderedEditor($provider.headersText, height: 60, monospaced: true)
+            })
+            labeledField("Body（可选）", field: {
+                borderedEditor($provider.body, height: 44, monospaced: true)
+            })
+            HStack(alignment: .firstTextBaseline) {
+                Text("Extractor（JavaScript）").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("格式化") {
+                    provider.extractor = JSFormatter.format(provider.extractor)
+                }
+                .controlSize(.small)
+                .help("重新缩进 extractor（不修改字符串/注释内容）")
+            }
+            CodeEditorView(text: $provider.extractor)
+                .frame(height: 180)
+        }
+    }
+
+    private func labeledField<Content: View>(
+        _ label: String,
+        @ViewBuilder field: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            field()
+        }
+    }
+
+    private func borderedEditor(_ text: Binding<String>, height: CGFloat, monospaced: Bool) -> some View {
+        TextEditor(text: text)
+            .font(monospaced ? .system(.body, design: .monospaced) : .body)
+            .frame(height: height)
+            .padding(4)
+            .scrollContentBackground(.hidden)
+            .background(Color(nsColor: .textBackgroundColor))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(nsColor: .separatorColor)))
     }
 
     private var refreshIntervalBinding: Binding<String> {
@@ -78,10 +138,6 @@ struct ProviderFormView: View {
                 provider.refreshIntervalSec = Int(newValue.trimmingCharacters(in: .whitespaces))
             }
         )
-    }
-
-    private func fieldLabel(_ text: String) -> some View {
-        Text(text).font(.caption).foregroundStyle(.secondary)
     }
 
     @ViewBuilder

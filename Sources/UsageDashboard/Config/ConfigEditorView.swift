@@ -21,7 +21,7 @@ struct ConfigEditorView: View {
             providerList
             addButtons
         }
-        .frame(minWidth: 680, minHeight: 520)
+        .frame(minWidth: 680, minHeight: 560)
     }
 
     private var header: some View {
@@ -36,10 +36,12 @@ struct ConfigEditorView: View {
     }
 
     private var defaultIntervalRow: some View {
-        HStack {
-            Text("默认刷新间隔（秒）")
+        HStack(alignment: .center, spacing: 6) {
+            Text("默认刷新间隔").font(.caption).foregroundStyle(.secondary)
             TextField("600", value: $model.defaultIntervalSec, format: .number)
+                .textFieldStyle(.roundedBorder)
                 .frame(width: 90)
+            Text("秒").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }
         .padding(.horizontal, 12)
@@ -47,16 +49,19 @@ struct ConfigEditorView: View {
     }
 
     private var providerList: some View {
-        List {
-            ForEach(model.providers.indices, id: \.self) { index in
-                ProviderFormView(
-                    provider: $model.providers[index],
-                    model: model,
-                    onDelete: { model.removeProvider(at: index) }
-                )
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(model.providers.indices, id: \.self) { index in
+                    ProviderFormView(
+                        provider: $model.providers[index],
+                        model: model,
+                        onDelete: { model.removeProvider(at: index) }
+                    )
+                }
             }
+            .padding(12)
         }
-        .listStyle(.inset)
+        .background(Color(nsColor: .underPageBackgroundColor))
     }
 
     private var addButtons: some View {
