@@ -35,7 +35,7 @@ public enum ConfigError: Error, Equatable, Sendable {
 public enum ConfigPath {
     public static var defaultURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/usage-dash/config.json")
+            .appendingPathComponent(".config/usage-dash/config.yaml")
     }
 
     public static func resolve(environment: [String: String]) -> URL {
