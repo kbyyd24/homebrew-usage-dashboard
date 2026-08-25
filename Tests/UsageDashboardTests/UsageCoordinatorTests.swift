@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import Yams
 @testable import UsageDashCore
 
 private struct FakeExtractor: ExtractorRunner {
@@ -13,8 +14,8 @@ private struct FakeExtractor: ExtractorRunner {
 
 private func writeTempConfig(_ object: [String: Any]) throws -> URL {
     let url = FileManager.default.temporaryDirectory
-        .appendingPathComponent("usage-dash-\(UUID().uuidString).json")
-    try JSONSerialization.data(withJSONObject: object).write(to: url)
+        .appendingPathComponent("usage-dash-\(UUID().uuidString).yaml")
+    try Data(Yams.dump(object: object).utf8).write(to: url)
     return url
 }
 
@@ -113,4 +114,85 @@ private let kimiBody = """
     #expect(coordinator.configWarnings[0].contains("cc"))
     let dashboard = try #require(coordinator.dashboard)
     #expect(dashboard.display().map(\.id) == ["kimi"])
+}
+
+@MainActor
+@Test func reloadReassemblesProvidersAndRefreshes() async throws {
+    // Given a coordinator started with a single kimi provider
+    let configURL = try writeTempConfig([
+        "providers": [
+            ["id": "kimi", "type": "kimi", "name": "Kimi Code", "apiKeyEnv": "KIMI_API_KEY"],
+        ],
+    ])
+    let client = StubHTTPClient { request in
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        return (Data("{}".utf8), response)
+    }
+    let coordinator = UsageCoordinator(httpClient: client, extractorRunner: FakeExtractor())
+    await coordinator.start(configURL: configURL, environment: ["KIMI_API_KEY": "sk-kimi"])
+    #expect(coordinator.dashboard?.display().map(\.id) == ["kimi"])
+
+    // When reloading with a different provider set
+    let newConfig = AppConfig(
+        defaultIntervalSec: 600,
+        providers: [
+            ProviderConfig(
+                id: "cc",
+                type: .custom,
+                name: "CommandCode",
+                apiKey: "sk-cc",
+                custom: CustomQueryConfig(url: "https://example.com/cc", method: "GET", extractor: "f")
+            ),
+        ]
+    )
+    await coordinator.reload(config: newConfig)
+
+    // Then the dashboard reflects the new config and the store is refreshed
+    #expect(coordinator.dashboard?.display().map(\.id) == ["cc"])
+    #expect(coordinator.store.snapshot(forId: "cc")?.status == .ok)
+    #expect(coordinator.configWarnings.isEmpty)
+}
+
+@MainActor
+@Test func testProviderReturnsSnapshotWithoutTouchingStore() async throws {
+    // Given a coordinator with a stubbed kimi response
+    let client = StubHTTPClient { request in
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        return (Data(kimiBody.utf8), response)
+    }
+    let coordinator = UsageCoordinator(httpClient: client, extractorRunner: FakeExtractor())
+    let config = ProviderConfig(id: "kimi", type: .kimi, name: "Kimi", apiKey: "sk-kimi")
+
+    // When testing the provider
+    let snapshot = try await coordinator.test(provider: config)
+
+    // Then a snapshot is returned without writing to the store
+    #expect(snapshot.status == .ok)
+    #expect(snapshot.rows.count == 2)
+    #expect(coordinator.store.snapshot(forId: "kimi") == nil)
+}
+
+@MainActor
+@Test func testProviderTimesOut() async {
+    // Given a coordinator whose client never answers in time
+    let client = StubHTTPClient { request in
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        return (Data("{}".utf8), response)
+    }
+    let coordinator = UsageCoordinator(httpClient: client, extractorRunner: FakeExtractor())
+    let config = ProviderConfig(id: "kimi", type: .kimi, name: "Kimi", apiKey: "sk-kimi")
+
+    // When testing with a short timeout
+    do {
+        _ = try await coordinator.test(provider: config, timeout: 0.1)
+        Issue.record("expected a timeout error")
+    } catch let error as ProviderError {
+        guard case .timeout = error else {
+            Issue.record("expected timeout, got \(String(describing: error))")
+            return
+        }
+    } catch {
+        Issue.record("expected ProviderError, got \(error)")
+    }
 }
