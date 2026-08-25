@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 import UsageDashCore
-@testable import UsageDash
+@testable import UsageDashboard
 
 private let commandCodeResponse = """
 {

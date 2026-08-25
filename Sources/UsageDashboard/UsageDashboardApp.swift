@@ -2,14 +2,15 @@ import AppKit
 import SwiftUI
 
 @main
-struct UsageDashApp: App {
+struct UsageDashboardApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var model = AppModel()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("UsageDashboard") {
             ContentView(model: model, observable: model.observable)
         }
+        .defaultSize(width: 720, height: 520)
     }
 }
 

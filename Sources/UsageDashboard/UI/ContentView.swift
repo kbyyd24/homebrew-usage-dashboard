@@ -13,19 +13,22 @@ struct ContentView: View {
                 dashboardView
             }
         }
-        .frame(minWidth: 420, minHeight: 340)
+        .frame(minWidth: 520, minHeight: 400)
         .task { await model.start() }
     }
 
     private var dashboardView: some View {
         let providers = model.dashboard.display()
         return ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 360), spacing: 12)],
+                spacing: 12
+            ) {
                 ForEach(providers) { provider in
                     ProviderCardView(provider: provider)
                 }
             }
-            .padding()
+            .padding(12)
         }
     }
 

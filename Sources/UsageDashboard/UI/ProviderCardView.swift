@@ -5,12 +5,17 @@ struct ProviderCardView: View {
     let provider: DashboardViewModel.ProviderDisplay
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
                 Text(provider.name)
                     .font(.headline)
                 Spacer()
                 statusBadge
+                if let fetched = provider.fetchedAtText {
+                    Text("· \(fetched)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             if let error = provider.errorMessage {
@@ -23,16 +28,11 @@ struct ProviderCardView: View {
             ForEach(provider.rows) { row in
                 RowView(row: row)
             }
-
-            if let fetched = provider.fetchedAtText {
-                Text("更新于 \(fetched)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
         }
-        .padding()
-        .background(RoundedRectangle(cornerRadius: 10).fill(Color.secondary.opacity(0.08)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.25)))
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.25)))
     }
 
     @ViewBuilder

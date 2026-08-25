@@ -2,18 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "UsageDash",
+    name: "UsageDashboard",
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "UsageDashCore"),
         .executableTarget(
-            name: "UsageDash",
+            name: "UsageDashboard",
             dependencies: ["UsageDashCore"],
             linkerSettings: [.linkedFramework("JavaScriptCore")]
         ),
         .testTarget(
-            name: "UsageDashTests",
-            dependencies: ["UsageDashCore", "UsageDash"],
+            name: "UsageDashboardTests",
+            dependencies: ["UsageDashCore", "UsageDashboard"],
             linkerSettings: [.linkedFramework("JavaScriptCore")]
         ),
     ]

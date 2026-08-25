@@ -30,7 +30,7 @@ swift run
 
 ```sh
 ./scripts/package.sh
-# 产出 dist/UsageDash.app，可双击运行（未签名）
+# 产出 dist/UsageDashboard.app，可双击运行（未签名）
 ```
 
 ## 配置示例
