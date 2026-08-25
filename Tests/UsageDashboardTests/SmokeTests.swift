@@ -6,6 +6,6 @@ import Testing
 
     // When the core library is imported
 
-    // Then its placeholder version marker is visible
-    #expect(UsageDashCore.version == "0.1.0")
+    // Then a core value type is visible (smoke marker)
+    #expect(ProviderStatus.ok == .ok)
 }
