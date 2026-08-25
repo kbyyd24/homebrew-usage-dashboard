@@ -7,6 +7,7 @@ public enum ProviderError: Error, Equatable, Sendable {
     case http(status: Int, body: String)
     case parse(String)
     case extractor(String)
+    case timeout(seconds: Double)
 
     public var message: String {
         switch self {
@@ -16,6 +17,7 @@ public enum ProviderError: Error, Equatable, Sendable {
         case .http(let status, let body): return "http \(status): \(body)"
         case .parse(let detail): return "parse error: \(detail)"
         case .extractor(let detail): return "extractor error: \(detail)"
+        case .timeout(let seconds): return "request timed out after \(seconds) seconds"
         }
     }
 
