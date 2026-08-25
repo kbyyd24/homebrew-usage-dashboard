@@ -11,6 +11,20 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp .build/arm64-apple-macosx/release/UsageDashboard "$APP/Contents/MacOS/UsageDashboard"
 
+# --- Generate the app icon (.icns) from scripts/DrawIcon.swift ---
+ICON_PNG="$(mktemp -u /tmp/usage-icon.XXXXXX.png)"
+swift scripts/DrawIcon.swift "$ICON_PNG" >/dev/null
+ICONSET_DIR="$(mktemp -d)/AppIcon.iconset"
+mkdir -p "$ICONSET_DIR"
+for s in 16 32 128 256 512; do
+  d=$((s * 2))
+  sips -z "$s" "$s" "$ICON_PNG" --out "$ICONSET_DIR/icon_${s}x${s}.png" >/dev/null
+  sips -z "$d" "$d" "$ICON_PNG" --out "$ICONSET_DIR/icon_${s}x${s}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET_DIR" -o "$APP/Contents/Resources/AppIcon.icns"
+rm -f "$ICON_PNG"
+rm -rf "$(dirname "$ICONSET_DIR")"
+
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -20,6 +34,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleDisplayName</key><string>UsageDashboard</string>
   <key>CFBundleIdentifier</key><string>local.usagedashboard</string>
   <key>CFBundleExecutable</key><string>UsageDashboard</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>CFBundleVersion</key><string>1</string>
