@@ -4,6 +4,7 @@ import Foundation
 public final class UsageCoordinator {
     public let store = SnapshotStore()
     public private(set) var dashboard: DashboardViewModel?
+    public private(set) var config: AppConfig?
     public private(set) var configError: String?
     public private(set) var configWarnings: [String] = []
 
@@ -34,6 +35,7 @@ public final class UsageCoordinator {
     /// refreshes once, stopping any previous scheduler first.
     public func reload(config: AppConfig) async {
         configError = nil
+        self.config = config
         scheduler?.stop()
         assemble(config)
         await scheduler?.refreshAllOnce()
