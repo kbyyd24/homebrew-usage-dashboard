@@ -5,6 +5,7 @@ public final class UsageCoordinator {
     public let store = SnapshotStore()
     public private(set) var dashboard: DashboardViewModel?
     public private(set) var config: AppConfig?
+    public private(set) var configURL: URL?
     public private(set) var configError: String?
     public private(set) var configWarnings: [String] = []
 
@@ -24,6 +25,7 @@ public final class UsageCoordinator {
         do {
             let resolved = configURL ?? ConfigPath.resolve(environment: environment)
             let url = try ConfigMigration.migrateIfNeeded(configURL: resolved, environment: environment)
+            self.configURL = url
             let config = try ConfigLoader(environment: environment).load(url: url)
             await reload(config: config)
         } catch {

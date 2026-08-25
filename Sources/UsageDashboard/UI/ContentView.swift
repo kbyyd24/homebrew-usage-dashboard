@@ -14,6 +14,22 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 520, minHeight: 400)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    model.presentConfigEditor()
+                } label: {
+                    Label("配置", systemImage: "gearshape")
+                }
+            }
+        }
+        .sheet(isPresented: $model.isConfigEditorPresented) {
+            ConfigEditorView(
+                model: model.editorModel,
+                onSave: { Task { await model.saveConfig() } },
+                onCancel: { model.isConfigEditorPresented = false }
+            )
+        }
         .task { await model.start() }
     }
 
@@ -61,6 +77,9 @@ struct ContentView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
+            Text("点击右上角「配置」按钮可编辑配置。")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

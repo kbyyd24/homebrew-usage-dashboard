@@ -88,11 +88,18 @@ final class ConfigEditorModel: ObservableObject {
     }
 
     func addProvider(type: ProviderType) {
-        providers.append(EditableProvider(type: type))
+        providers = providers + [EditableProvider(type: type)]
     }
 
     func removeProvider(id: String) {
-        providers.removeAll { $0.id == id }
+        providers = providers.filter { $0.id != id }
+    }
+
+    func removeProvider(at index: Int) {
+        guard providers.indices.contains(index) else { return }
+        var updated = providers
+        updated.remove(at: index)
+        providers = updated
     }
 
     // MARK: - Validation
