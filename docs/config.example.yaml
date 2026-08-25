@@ -1,0 +1,32 @@
+defaultIntervalSec: 600
+providers:
+  - id: kimi
+    type: kimi
+    name: Kimi Code
+    apiKeyEnv: KIMI_API_KEY
+  - id: minimax
+    type: minimax
+    name: MiniMax M3
+    apiKeyEnv: MINIMAX_API_KEY
+  - id: commandcode
+    type: custom
+    name: CommandCode
+    apiKeyEnv: COMMANDCODE_API_KEY
+    request:
+      url: https://api.commandcode.ai/alpha/billing/credits
+      method: GET
+      headers:
+        Authorization: "Bearer {{apiKey}}"
+    extractor: |
+      function(response) {
+        var w = response.windowLimits;
+        return {
+          status: 'ok',
+          message: '',
+          rows: [
+            { kind: 'window', label: '5 小时', used: w.fiveHour.used, cap: w.fiveHour.cap, resetAt: w.fiveHour.resetAt },
+            { kind: 'window', label: '本周', used: w.weekly.used, cap: w.weekly.cap, resetAt: w.weekly.resetAt },
+            { kind: 'balance', label: '月度余额', balance: response.credits.monthlyCredits, unit: 'credits' }
+          ]
+        };
+      }
