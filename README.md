@@ -8,6 +8,23 @@
 - 密钥：`apiKey` 字面量或 `apiKeyEnv` 引用环境变量。
 - 配置：YAML 文件，内置图形化配置编辑器（增删改订阅、多行 extractor、保存前测试连接）。
 
+## 安装（Homebrew）
+
+通过 Homebrew Cask 安装，一条命令装到 `/Applications`（需 macOS 14+，Apple Silicon）：
+
+```sh
+brew tap kbyyd24/usage-dashboard
+brew install kbyyd24/usage-dashboard/usage-dashboard
+```
+
+卸载会连配置一起清理（`~/.config/usage-dash`）：
+
+```sh
+brew uninstall kbyyd24/usage-dashboard/usage-dashboard
+```
+
+> 该 Cask 指向本仓库 tag 触发构建的 GitHub Release artifact；应用为 arm64、未公证（ad-hoc 签名）。
+
 ## 构建与测试
 
 本机使用 CommandLineTools（无完整 Xcode）。
@@ -39,9 +56,13 @@ swift run
 ## 打包
 
 ```sh
-./scripts/package.sh
-# 产出 dist/UsageDashboard.app，可双击运行（未签名）
+./scripts/package.sh [version]
+# 产出 dist/UsageDashboard.app 与 dist/UsageDashboard-<version>-macos-arm64.zip
+# 应用为 arm64、ad-hoc 签名（未公证），首次双击需右键→打开
 ```
+
+发布：推送 `v*` tag（如 `v0.1.0`）触发 `.github/workflows/release.yml`，自动构建 zip 并发布 GitHub Release；
+发布同时会把 `Casks/usage-dashboard.rb` 的 version/sha256 回写并提交回 `main`。
 
 ## 配置示例
 
