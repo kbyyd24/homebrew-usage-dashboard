@@ -1,0 +1,46 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test
+        run: swift test
+
+      - name: Package .app and zip
+        run: ./scripts/package.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Render cask
+        run: ./scripts/release.sh "dist/UsageDashboard-${GITHUB_REF_NAME#v}-macos-arm64.zip"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "dist/UsageDashboard-${GITHUB_REF_NAME#v}-macos-arm64.zip" --title "$GITHUB_REF_NAME" --notes "UsageDashboard ${GITHUB_REF_NAME#v}"
+
+      - name: Commit updated cask
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add Casks/usage-dashboard.rb
+          if git diff --cached --quiet; then
+            echo "cask unchanged; no commit needed"
+          else
+            git commit -m "chore(release): update cask for ${GITHUB_REF_NAME}"
+            git push origin main
+          fi
