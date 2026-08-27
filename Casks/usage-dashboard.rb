@@ -7,7 +7,7 @@ cask "usage-dashboard" do
   desc "See multiple LLM subscription usage in a native macOS window"
   homepage "https://github.com/kbyyd24/homebrew-usage-dashboard"
 
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "UsageDashboard.app"
 
