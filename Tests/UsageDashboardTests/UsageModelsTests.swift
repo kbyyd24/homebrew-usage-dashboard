@@ -50,6 +50,7 @@ import Testing
     // Then raw values stay stable
     #expect(ProviderType.kimi.rawValue == "kimi")
     #expect(ProviderType.minimax.rawValue == "minimax")
+    #expect(ProviderType.deepseek.rawValue == "deepseek")
     #expect(ProviderType.custom.rawValue == "custom")
 }
 

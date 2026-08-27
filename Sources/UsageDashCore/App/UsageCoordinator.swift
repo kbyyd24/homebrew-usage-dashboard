@@ -65,6 +65,8 @@ public final class UsageCoordinator {
             return KimiProvider(config: config, httpClient: httpClient)
         case .minimax:
             return MiniMaxProvider(config: config, httpClient: httpClient)
+        case .deepseek:
+            return DeepSeekProvider(config: config, httpClient: httpClient)
         case .custom:
             return CustomProvider(config: config, httpClient: httpClient, extractorRunner: extractorRunner)
         }

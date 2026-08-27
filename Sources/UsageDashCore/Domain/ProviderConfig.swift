@@ -3,6 +3,7 @@ import Foundation
 public enum ProviderType: String, Hashable, Sendable, Codable {
     case kimi
     case minimax
+    case deepseek
     case custom
 }
 
