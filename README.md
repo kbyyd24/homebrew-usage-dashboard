@@ -14,15 +14,16 @@
 
 ```sh
 brew tap kbyyd24/usage-dashboard
-brew install kbyyd24/usage-dashboard/usage-dashboard
+brew install --cask kbyyd24/usage-dashboard/usage-dashboard
 ```
 
-卸载会连配置一起清理（`~/.config/usage-dash`）：
+卸载：`brew uninstall --cask` 只删应用；要**连配置一起清理**（`~/.config/usage-dash`）需加 `--zap`：
 
 ```sh
-brew uninstall kbyyd24/usage-dashboard/usage-dashboard
+brew uninstall --cask --zap kbyyd24/usage-dashboard/usage-dashboard
 ```
 
+> 说明：Cask 已声明 `zap trash: "~/.config/usage-dash"`，但 Homebrew 只在 `--zap` 时才执行。
 > 该 Cask 指向本仓库 tag 触发构建的 GitHub Release artifact；应用为 arm64、未公证（ad-hoc 签名）。
 
 ## 构建与测试
