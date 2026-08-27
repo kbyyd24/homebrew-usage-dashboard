@@ -63,6 +63,7 @@ struct ProviderFormView: View {
                 Picker("", selection: $provider.type) {
                     Text("Kimi").tag(ProviderType.kimi)
                     Text("MiniMax").tag(ProviderType.minimax)
+                    Text("DeepSeek").tag(ProviderType.deepseek)
                     Text("自定义").tag(ProviderType.custom)
                 }
                 .pickerStyle(.segmented)

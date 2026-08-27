@@ -8,6 +8,10 @@ providers:
     type: minimax
     name: MiniMax M3
     apiKeyEnv: MINIMAX_API_KEY
+  - id: deepseek
+    type: deepseek
+    name: DeepSeek
+    apiKeyEnv: DEEPSEEK_API_KEY
   - id: commandcode
     type: custom
     name: CommandCode

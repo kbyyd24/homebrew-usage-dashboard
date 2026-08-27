@@ -2,7 +2,7 @@
 
 一个 macOS 原生窗口，一眼查看多个 LLM 订阅的用量（5 小时 / 周 / 月窗口、余额与重置时间）。
 
-- 内置支持：Kimi Code（`kimi`）、MiniMax M3（`minimax`）。
+- 内置支持：Kimi Code（`kimi`）、MiniMax M3（`minimax`）、DeepSeek（`deepseek`，余额）。
 - 自定义服务商：配置「请求 + JavaScript extractor」，例如 CommandCode。
 - 刷新频率：全局默认 600 秒，每个订阅可用 `refreshIntervalSec` 覆盖。
 - 密钥：`apiKey` 字面量或 `apiKeyEnv` 引用环境变量。

@@ -69,6 +69,7 @@ struct ConfigEditorView: View {
             Text("添加：")
             Button("Kimi") { model.addProvider(type: .kimi) }
             Button("MiniMax") { model.addProvider(type: .minimax) }
+            Button("DeepSeek") { model.addProvider(type: .deepseek) }
             Button("自定义") { model.addProvider(type: .custom) }
             Spacer()
         }
